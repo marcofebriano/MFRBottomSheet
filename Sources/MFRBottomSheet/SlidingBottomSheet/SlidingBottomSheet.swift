@@ -74,17 +74,27 @@ open class MFRSlidingBottomSheet: MFRBaseBottomSheet {
         }
     }
     
-    public lazy var notchView: UIView = {
+    private lazy var notchView: UIView = {
         var view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.accessibilityIdentifier = "notchView"
         view.backgroundColor = UIColor(hex: "#383838")
         return view
     }()
     
-    public lazy var containerView: UIView = {
+    private lazy var containerView: UIView = {
         var view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.accessibilityIdentifier = "containerView"
         view.backgroundColor = .clear
         return view
     }()
+    
+    public lazy var notchColor: UIColor = UIColor(hex: "#383838") {
+        didSet {
+            notchView.backgroundColor = notchColor
+        }
+    }
     
     public init(config: MFRSlidingBottomSheet.HeightConfig, dismissable: Bool, overlayBackground: MFRBaseBottomSheetOverlay = MFRDefaultOverlayBottomSheet()) {
         self.overlayBackground = overlayBackground
@@ -105,6 +115,7 @@ open class MFRSlidingBottomSheet: MFRBaseBottomSheet {
         overlayBackground.didTapOverlay = { [weak self] in
             self?.dismiss(animated: true, withInfo: nil, completion: nil)
         }
+        setupPanGesture()
         setupLayout()
     }
     
@@ -118,26 +129,28 @@ open class MFRSlidingBottomSheet: MFRBaseBottomSheet {
         bottomSheetView.addSubview(containerView)
         
         NSLayoutConstraint.activate([
-            shadowView.topToSuperView(),
-            shadowView.leftToSuperView(),
-            shadowView.rightToSuperView(),
-            shadowView.bottomToSuperView(constant: 50),
+            shadowView.topAnchor.constraint(equalTo: self.topAnchor),
+            shadowView.leftAnchor.constraint(equalTo: self.leftAnchor),
+            shadowView.rightAnchor.constraint(equalTo: self.rightAnchor),
+            shadowView.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: -50),
             
-            bottomSheetView.topTo(view: shadowView, constant: 8),
-            bottomSheetView.leftToSuperView(),
-            bottomSheetView.rightToSuperView(),
-            bottomSheetView.bottomToSuperView(),
+            bottomSheetView.topAnchor.constraint(equalTo: shadowView.topAnchor, constant: 8),
+            bottomSheetView.leadingAnchor.constraint(equalTo: self.leadingAnchor),
+            bottomSheetView.trailingAnchor.constraint(equalTo: self.trailingAnchor),
             
-            notchView.topToSuperView(constant: 8),
-            notchView.widthEqualTo(25),
-            notchView.heightEqualTo(4),
-            notchView.centerXToSuperView(),
+            notchView.topAnchor.constraint(equalTo: bottomSheetView.topAnchor, constant: 8),
+            notchView.widthAnchor.constraint(equalToConstant: 25),
+            notchView.heightAnchor.constraint(equalToConstant: 4),
+            notchView.centerXAnchor.constraint(equalTo: bottomSheetView.centerXAnchor),
             
-            containerView.leftToSuperView(),
-            containerView.rightToSuperView(),
-            containerView.bottomToSuperView(),
-            containerView.topTo(view: notchView, constant: 8)
+            containerView.leadingAnchor.constraint(equalTo: bottomSheetView.leadingAnchor),
+            containerView.trailingAnchor.constraint(equalTo: bottomSheetView.trailingAnchor),
+            containerView.bottomAnchor.constraint(equalTo: bottomSheetView.bottomAnchor),
+            containerView.topAnchor.constraint(equalTo: notchView.bottomAnchor, constant: 8)
         ])
+        let bottomSheetToBottom = bottomSheetView.bottomAnchor.constraint(equalTo: self.bottomAnchor)
+        bottomSheetToBottom.priority = .defaultHigh
+        bottomSheetToBottom.isActive = true
     }
     
     open override func show(fromView parentView: UIView, animated: Bool, completion: MFRVoidClosure?) {
@@ -326,12 +339,12 @@ extension MFRSlidingBottomSheet {
             /// then the index should never change
             let newIndex = currentHeightIndex > 0 ? currentHeightIndex - 1 : 0
             let possibleHeight = heights[newIndex]
-            guard isNearTo(newHeight: height, threshold: possibleHeight) else {
-                /// if new height not even near to threshold `previous snap height`,
-                /// should `force` change the height to the height before it panned
-                animateContainerHeight(currentHeight)
-                return
-            }
+//            guard isNearTo(newHeight: height, threshold: possibleHeight) else {
+//                /// if new height not even near to threshold `previous snap height`,
+//                /// should `force` change the height to the height before it panned
+//                animateContainerHeight(currentHeight)
+//                return
+//            }
             animateContainerHeight(possibleHeight) { [weak self] in
                 guard let self = self else { return }
                 self.delegate?.bottomSheet(self, didMove: possibleHeight, animated: true)
@@ -347,12 +360,12 @@ extension MFRSlidingBottomSheet {
             let isLastIndex = currentHeightIndex == (heights.count - 1)
             let newIndex = isLastIndex ? currentHeightIndex : currentHeightIndex + 1
             let possibleHeight = heights[newIndex]
-            guard isNearTo(newHeight: height, threshold: possibleHeight) else {
-                /// if new height not even near to threshold `next snap height`,
-                /// should `force` change the height to the height before it panned
-                animateContainerHeight(currentHeight)
-                return
-            }
+//            guard isNearTo(newHeight: height, threshold: possibleHeight) else {
+//                /// if new height not even near to threshold `next snap height`,
+//                /// should `force` change the height to the height before it panned
+//                animateContainerHeight(currentHeight)
+//                return
+//            }
             animateContainerHeight(possibleHeight) { [weak self] in
                 guard let self = self else { return }
                 self.delegate?.bottomSheet(self, didMove: possibleHeight, animated: true)

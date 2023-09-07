@@ -14,22 +14,27 @@ open class MFRBaseBottomSheet: UIView {
     
     public lazy var bottomSheetView: UIView = {
         var view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.backgroundColor = .white
+        view.accessibilityIdentifier = "bottomSheetView"
         return view
     }()
     
     public lazy var shadowView: UIView = {
         var view = UIView()
+        view.translatesAutoresizingMaskIntoConstraints = false
+        view.accessibilityIdentifier = "shadowView"
         view.clipsToBounds = true
         return view
     }()
     
-    public var contentViewBackgroundColor: UIColor = .white {
+    public var bottomSheetColor: UIColor = .white {
         didSet {
             setupBaseView()
         }
     }
     
-    public var contentViewCornerRadius: CGFloat = 16 {
+    public var bottomSheetCornerRadius: CGFloat = 16 {
         didSet {
             setupBaseView()
         }
@@ -52,10 +57,10 @@ open class MFRBaseBottomSheet: UIView {
     }
     
     private func setupBaseView() {
-        bottomSheetView.backgroundColor = contentViewBackgroundColor
-        bottomSheetView.layer.cornerRadius = contentViewCornerRadius
-        shadowView.backgroundColor = contentViewBackgroundColor
-        shadowView.layer.cornerRadius = contentViewCornerRadius
+        bottomSheetView.backgroundColor = bottomSheetColor
+        bottomSheetView.layer.cornerRadius = bottomSheetCornerRadius
+        shadowView.backgroundColor = bottomSheetColor
+        shadowView.layer.cornerRadius = bottomSheetCornerRadius
         shadowView.applyShadow(
             color: .black.withAlphaComponent(0.15),
             offset: .zero,
@@ -66,7 +71,6 @@ open class MFRBaseBottomSheet: UIView {
     private func setupLayout() {
         self.addSubview(shadowView)
         self.addSubview(bottomSheetView)
-        
     }
     
     /// Use this method to show the bottom sheet from an UIView.
