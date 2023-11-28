@@ -82,7 +82,7 @@ open class MFRSlidingBottomSheet: MFRBaseBottomSheet {
         return view
     }()
     
-    private lazy var containerView: UIView = {
+    public lazy var containerView: UIView = {
         var view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
         view.accessibilityIdentifier = "containerView"
