@@ -12,30 +12,65 @@ open class MFRFixedBottomSheet: MFRBaseBottomSheet {
     
     private let overlayBackground: MFRBaseBottomSheetOverlay
     private var bottomConstraint: NSLayoutConstraint?
-    private var isDismissable: Bool
+    private var sheetType: MFRFixedBottomSheet.SheetType
     
     public lazy var containerView: UIView = {
         var view = UIView()
         view.translatesAutoresizingMaskIntoConstraints = false
-        view.accessibilityIdentifier = "containerView"
+        view.accessibilityIdentifier = "MFRFixedBottomSheet_containerView"
         view.backgroundColor = .clear
         return view
     }()
     
-    public init(dismissable: Bool, overlayBackground: MFRBaseBottomSheetOverlay = MFRDefaultOverlayBottomSheet()) {
+    private lazy var closeButton: UIButton = {
+        let button = UIButton()
+        button.addTarget(self, action: #selector(closeButtonAction), for: .touchUpInside)
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.accessibilityIdentifier = "MFRFixedBottomSheet_closeButton"
+        
+        if #available(iOS 15.0, *) {
+            button.configuration = buttonCloseConfig()
+        } else {
+            let image = UIImage(systemName: "xmark")?.withTintColor(.gray, renderingMode: .alwaysOriginal)
+            button.setImage(image, for: .normal)
+            button.backgroundColor = .white
+            button.imageEdgeInsets = UIEdgeInsets(top: 8, left: 8, bottom: 8, right: 8)
+        }
+        button.isUserInteractionEnabled = true
+        button.layer.masksToBounds = true
+        button.layer.cornerRadius = 22
+        button.isEnabled = true
+        return button
+    }()
+    
+    override public var bottomSheetColor: UIColor {
+        get {
+            super.bottomSheetColor
+        }
+        set {
+            if #available(iOS 15.0, *) {
+                closeButton.configuration?.baseBackgroundColor = newValue
+            } else {
+                closeButton.backgroundColor = newValue
+            }
+        }
+    }
+    
+    public init(sheetType: MFRFixedBottomSheet.SheetType, overlayBackground: MFRBaseBottomSheetOverlay = MFRDefaultOverlayBottomSheet()) {
         self.overlayBackground = overlayBackground
-        self.isDismissable = dismissable
+        self.sheetType = sheetType
         super.init()
     }
     
     public required init?(coder: NSCoder) {
-        fatalError("MFRSlidingBottomSheet shouldn't be used via xib. You can use xib for the MFRSlidingBottomSheet's containerView.")
+        fatalError("MFRFixedBottomSheet shouldn't be used via xib. You can use xib for the MFRFixedBottomSheet's containerView.")
     }
     
     open override func initialSetup() {
         super.initialSetup()
         overlayBackground.didTapOverlay = { [weak self] in
-            self?.dismiss(animated: true, withInfo: nil, completion: nil)
+            guard let self = self, self.sheetType == .fixed else { return }
+            self.dismiss(animated: true, withInfo: nil, completion: nil)
         }
         setupLayout()
     }
@@ -60,9 +95,21 @@ open class MFRFixedBottomSheet: MFRBaseBottomSheet {
     
     func setupLayout() {
         bottomSheetView.addSubview(containerView)
+        self.addSubview(closeButton)
         
+        let isDialog = sheetType == .dialog
+        closeButton.isHidden = isDialog ? false : true
+
         NSLayoutConstraint.activate([
-            shadowView.topAnchor.constraint(equalTo: self.topAnchor),
+            closeButton.topAnchor.constraint(equalTo: self.topAnchor),
+            closeButton.trailingAnchor.constraint(equalTo: self.trailingAnchor, constant: -16),
+            closeButton.heightAnchor.constraint(equalToConstant: 44),
+            closeButton.widthAnchor.constraint(equalToConstant: 44),
+            
+            shadowView.topAnchor.constraint(
+                equalTo: isDialog ? closeButton.bottomAnchor : self.topAnchor,
+                constant: isDialog ? 8 : 0
+            ),
             shadowView.leftAnchor.constraint(equalTo: self.leftAnchor),
             shadowView.rightAnchor.constraint(equalTo: self.rightAnchor),
             shadowView.bottomAnchor.constraint(equalTo: self.bottomAnchor, constant: -50),
@@ -85,6 +132,15 @@ open class MFRFixedBottomSheet: MFRBaseBottomSheet {
         self.removeFromSuperview()
         self.delegate?.bottomSheet(self, didDismiss: withInfo, animated: animated)
     }
+    
+    @objc
+    func closeButtonAction() {
+        self.dismiss(animated: true, withInfo: nil, completion: nil)
+    }
+    
+    public func updateBottomConstraint(_ constant: CGFloat) {
+        animateContainerHeight(constant)
+    }
 }
 
 extension MFRFixedBottomSheet {
@@ -105,6 +161,13 @@ extension MFRFixedBottomSheet {
         inSuperView.layoutIfNeeded()
         bottomConstraint = bottomAnchor
         
+        animatePresentBottomSheet(inSuperView, bottomAnchor)
+    }
+    
+    private func animatePresentBottomSheet(_ inSuperView: UIView, _ bottomAnchor: NSLayoutConstraint) {
+        /// this animation to update the constant of the bottom constraint to superView to be 0.
+        /// that means, the card will show
+        
         let beforeConstant = bottomAnchor.constant
         bottomAnchor.constant = self.frame.height
         inSuperView.layoutIfNeeded()
@@ -118,23 +181,6 @@ extension MFRFixedBottomSheet {
                 guard let strSuperView = inSuperView else { return }
                 strSuperView.layoutIfNeeded()
             }
-    }
-    
-    private func animatePresentBottomSheet() {
-        /// this animation to update the constant of the bottom constraint to superView to be 0.
-        /// that means, the card will show
-        
-        UIView.animate(
-            withDuration: 0.7,
-            delay: 0,
-            usingSpringWithDamping: 0.7,
-            initialSpringVelocity: 0,
-            options: [.allowUserInteraction, .allowUserInteraction]) { [weak self] in
-                guard let self = self else { return }
-                self.bottomConstraint?.constant = 0
-                self.superview?.layoutIfNeeded()
-                self.layoutIfNeeded()
-        }
     }
     
     private func animateContainerHeight(_ height: CGFloat, completion: (() -> Void)? = nil) {
@@ -152,5 +198,25 @@ extension MFRFixedBottomSheet {
                 guard complete else { return }
                 completion?()
             }
+    }
+}
+
+extension MFRFixedBottomSheet {
+    
+    @available(iOS 15.0, *)
+    func buttonCloseConfig() -> UIButton.Configuration {
+        var config = UIButton.Configuration.filled()
+        config.image = UIImage(systemName: "xmark")?.withTintColor(.gray, renderingMode: .alwaysOriginal)
+        config.baseBackgroundColor = .white
+        config.imagePadding = 8
+        config.imagePlacement = .all
+        return config
+    }
+}
+
+extension MFRFixedBottomSheet {
+    public enum SheetType {
+        case dialog
+        case fixed
     }
 }
